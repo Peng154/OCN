@@ -1,0 +1,71 @@
+data_dir: '../data/Lorenz'
+data_name: 'Lorenz'
+coupled_systems_n: 3
+
+seed: 456
+gpu_idx: 1
+
+data_workers: 3
+b_size: 50
+n_samples: 30000
+time: 500
+step: 0.004
+skip_time_num: 2000 
+noise_strength: 0.0
+
+split_ratios: [0.8, 0.1, 0.1] 
+coupled_len: 20 
+pred_len: 8
+
+z_score: True 
+inverse_out: False
+
+epoches: 90
+early_stop_patience: 70
+eval_interval: 1
+
+
+evaluate: False
+resume_file: ~  # 需要加载的保存点
+
+model_name: 'PredTCNRecurrentDEAE_H_Vector_Embed_Mean'
+model_params:
+  init_method: 'kaiming_normal_'
+  norm_type: 'ln'
+  dropout: 0.05
+  activation: 'ReLU'
+
+  encoder_param:
+
+    - module_type: 'mlp'
+      hidden_size: [ 460 ]
+
+  one_neuron_param:
+    resnet: False
+    kernel_size: 201
+    channels: [30, 1]
+    dilations: [1, 1]
+    strides: [1, 1]
+    recurrent_times: 480
+    embedding_rec_times: 16  
+
+  decoder_param:
+    -
+      module_type: 'identity'
+      hidden_size: [ 240 ]
+
+lr: 5.0e-3
+lr_scheduler: 'ExponentialLR'
+lr_scheduler_params:
+  last_epoch: -1
+  gamma: 0.95
+
+l2_weight: 1.0e-2 
+
+loss_weights:
+  pred_loss: 2.0
+  coupled_embed_loss: 1.0
+  embed_std_loss: 0.05
+  rec_loss: 2.0
+
+

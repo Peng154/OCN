@@ -1,0 +1,59 @@
+data_name: 'CIFAR10'
+class_num: 10
+
+seed: 666
+gpu_idx: 1
+
+b_size: 500
+epoches: 60
+eval_interval: 1
+early_stop_patience: 60
+
+z_score: True
+data_aug: True  
+gpu_aug: True 
+aug_params:
+
+  GuassionNoiseGPU:
+    p: 0.1 
+    std: 1.0e-2
+    clip_range: False
+
+  RandomCrop: 
+    size: 32
+    padding: 1
+    padding_mode: 'constant'
+    fill: 0
+
+  RandomRotation: 
+    degrees: [-10, 10]
+    expand: False
+
+  RandomHorizontalFlip:
+    p: 0.5
+
+
+model_name: 'TCNRecurrentDEAE_H_Vector_Embed'
+model_params:
+  hidden_size: 700
+  decoder_hidden_size: 100
+  kernel_size: 201
+  channels: [80, 1]
+  recurrent_times: 1200
+
+  dropout: 0.1
+  activation: 'ReLU'
+
+lr: 1.0e-3
+lr_scheduler: 'ReduceLROnPlateau'
+lr_scheduler_params:
+  factor: 0.5
+  patience: 2
+  min_lr: 1.0e-5
+  verbose: True
+
+l2_weight: 0.0 
+loss_weights:
+  CE_loss_param: 1.0
+  mse_loss_param: 0.0
+
