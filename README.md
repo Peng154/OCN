@@ -25,4 +25,6 @@
     ```
 
 ## Contact
-If you have any questions or concerns, please contact us: mahp_scut@mail.scut.edu.cn or submit an issue
+If you have any questions or concerns, please contact us or submit an issue.
+> - The co-first authors: Hao Peng (mahp_scut@mail.scut.edu.cn), Pei Chen (chenpei@scut.edu.cn);
+> - The corresponding authors: Rui Liu (scliurui@scut.edu.cn), Luonan Chen (lnchen@sibs.ac.cn).
