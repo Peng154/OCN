@@ -26,7 +26,7 @@
 
 ## Contact
 If you have any questions or concerns, please submit an issue or contact one of the authors as follows:
-> - Hao Peng (mahp_scut@mail.scut.edu.cn), 
-> - Pei Chen (chenpei@scut.edu.cn),
-> - Rui Liu (scliurui@scut.edu.cn),
-> - Luonan Chen (lnchen@sibs.ac.cn).
+> - Hao Peng (mahp_scut@mail.scut.edu.cn)
+> - Pei Chen (chenpei@scut.edu.cn)
+> - Rui Liu (scliurui@scut.edu.cn)
+> - Luonan Chen (lnchen@sibs.ac.cn)
