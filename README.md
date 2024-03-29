@@ -1,5 +1,5 @@
 # OCN
-### This is an implementation of OCN: One Core Neuron for time-series predicting and deep learning
+### This is an implementation of paper "One-core neuron deep learning for time series prediction"
 
 ## Getting Started
 ### Prediciton
