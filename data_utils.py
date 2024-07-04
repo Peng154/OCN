@@ -8,9 +8,10 @@ import torchvision
 from torchvision import transforms as T
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 from typing import Dict, List
 import pandas as pd
+import numpy as np
 
 
 def get_lorenz_matrix(n, time=100, step=0.02, c=0.1, time_invariant=True, init_way='uniform', init_param=None):
@@ -36,7 +37,7 @@ def get_lorenz_matrix(n, time=100, step=0.02, c=0.1, time_invariant=True, init_w
         if not time_invariant:
             sigma = 10.0 + 0.1 * i % 10
 
-        x[0, i] = x[0, i - 1] + step * (sigma * (x[1, i - 1] - x[0, i - 1]) + c * x[(n - 1) * 3, i - 1])
+        x[0, i] = x[0, i - 1] + step * (sigma * (x[1, i - 1] - x[0, i - 1]) + np.sign(n - 1) * c * x[(n - 1) * 3, i - 1])
         x[1, i] = x[1, i - 1] + step * (28 * x[0, i - 1] - x[1, i - 1] - x[0, i - 1] * x[2, i - 1])
         x[2, i] = x[2, i - 1] + step * (-8 / 3 * x[2, i - 1] + x[0, i - 1] * x[1, i - 1])
 
@@ -209,6 +210,7 @@ def get_dataset(cfgs):
         'ETTh1': Dataset_Time_Seires,
         'ETTh2': Dataset_Time_Seires,
         'ETTm1': Dataset_Time_Seires,
+        'ETTm2': Dataset_Time_Seires,
         'WTH': Dataset_Time_Seires,
         'Weather': Dataset_Time_Seires,
         'ECL': Dataset_Time_Seires
@@ -220,6 +222,8 @@ def get_dataset(cfgs):
                 [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]],
         'ETTm1': [[0 * 30 * 24 * 4, 12 * 30 * 24 * 4 - cfgs['coupled_len'], 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - cfgs['coupled_len']],
                   [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]],
+        'ETTm2': [[0 * 30 * 24 * 4, 12 * 30 * 24 * 4 - cfgs['coupled_len'], 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - cfgs['coupled_len']],
+                  [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]],
         'WTH': [[0, 28 * 30 * 24 - cfgs['coupled_len'], 28 * 30 * 24 + 10 * 30 * 24 - cfgs['coupled_len']],
                 [28 * 30 * 24, 28 * 30 * 24 + 10 * 30 * 24, 28 * 30 * 24 + 20 * 30 * 24]],
         'ECL': [[0, 15 * 30 * 24 - cfgs['coupled_len'], 15 * 30 * 24 + 3 * 30 * 24 - cfgs['coupled_len']],
@@ -229,7 +233,7 @@ def get_dataset(cfgs):
     }
     data_name = cfgs['data_name']
     DataClass = data_class_map[data_name]
-    if data_name in ['ETTh1', 'ETTh2', 'ETTm1', 'WTH', 'Weather', 'ECL']:
+    if data_name in ['ETTh1', 'ETTh2', 'ETTm1', 'ETTm2', 'WTH', 'Weather', 'ECL']:
         boarders = boarders_map[data_name]
         train_dataset = DataClass(cfgs['data_dir'], data_path=cfgs['data_file'],
                                   size=[cfgs['coupled_len'], cfgs['pred_len']], flag='train',
@@ -241,43 +245,108 @@ def get_dataset(cfgs):
                                   size=[cfgs['coupled_len'], cfgs['pred_len']], flag='test', return_t_idx=True,
                                   features='M', scale=cfgs['z_score'], inverse=cfgs['inverse_out'], boarders=boarders)
     else:
-        train_dataset = DataClass(cfgs['data_dir'], cfgs['coupled_systems_n'], coupled_len=cfgs['coupled_len'],
+        train_dataset = DataClass(cfgs['data_dir'], cfgs['coupled_systems_n'], train_coupled_len=cfgs['train_coupled_len'], coupled_len=cfgs['coupled_len'],
                                   n_samples=cfgs['n_samples'], pred_len=cfgs['pred_len'],
                                   mode='train', split_ratios=cfgs['split_ratios'], noise_strength=cfgs['noise_strength'],
                                   lorenz_time=cfgs['time'], lorenz_step=cfgs['step'], skip_time_num=cfgs['skip_time_num'],
-                                  z_score=cfgs['z_score'], inverse_out=cfgs['inverse_out'],
+                                  z_score=cfgs['z_score'], inverse_out=cfgs['inverse_out'], select_dims=cfgs['select_dims'], target_dim=cfgs['target_dim'],
                                   train_sample_fraction=cfgs['sample_faction'] if 'sample_faction' in cfgs else 1.0)
 
-        val_dataset = DataClass(cfgs['data_dir'], cfgs['coupled_systems_n'], coupled_len=cfgs['coupled_len'],
+        val_dataset = DataClass(cfgs['data_dir'], cfgs['coupled_systems_n'], train_coupled_len=cfgs['train_coupled_len'], coupled_len=cfgs['coupled_len'],
                                 n_samples=cfgs['n_samples'], pred_len=cfgs['pred_len'], noise_strength=cfgs['noise_strength'],
                                 lorenz_time=cfgs['time'], lorenz_step=cfgs['step'], skip_time_num=cfgs['skip_time_num'],
-                                mode='val', split_ratios=cfgs['split_ratios'], return_t_idx=True,
+                                mode='val', split_ratios=cfgs['split_ratios'], return_t_idx=True, select_dims=cfgs['select_dims'], target_dim=cfgs['target_dim'],
                                 z_score=cfgs['z_score'], inverse_out=cfgs['inverse_out'])
-        test_dataset = DataClass(cfgs['data_dir'], cfgs['coupled_systems_n'], coupled_len=cfgs['coupled_len'],
+        test_dataset = DataClass(cfgs['data_dir'], cfgs['coupled_systems_n'], train_coupled_len=cfgs['train_coupled_len'], coupled_len=cfgs['coupled_len'],
                                  n_samples=cfgs['n_samples'], pred_len=cfgs['pred_len'], noise_strength=cfgs['noise_strength'],
                                  lorenz_time=cfgs['time'], lorenz_step=cfgs['step'], skip_time_num=cfgs['skip_time_num'],
-                                 mode='test', split_ratios=cfgs['split_ratios'], return_t_idx=True,
+                                 mode='test', split_ratios=cfgs['split_ratios'], return_t_idx=True, select_dims=cfgs['select_dims'], target_dim=cfgs['target_dim'],
                                  z_score=cfgs['z_score'], inverse_out=cfgs['inverse_out'])
     return train_dataset, val_dataset, test_dataset
 
+
+# Time series prediction datasets
+class TimeBatchSampler(Sampler[List[int]]):
+    def __init__(self, data_source, batch_size: int, sample_stride: int,
+                 shuffle=True, drop_last=False):
+        """_summary_
+
+        Args:
+            data_source (_type_): 可以直接传dataset
+            batch_size (_type_): batch 大小
+            batch_stride (_type_): batch 之间的间隔
+            shuffle (bool, optional): shuffle 的进行就是:
+                如果 (len(data_source) - batch_size) % batch_stride != 0
+                k是最后剩下来的几个时间点的数量
+                那么每次初始化batch_idxs迭代器都是 随机从data_source的前k个索引开始
+        """
+        self.samples_count = len(data_source)  # 所有数据样本的数量
+        self.sample_stride = sample_stride
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.drop_last = drop_last
+        
+        self.strided_idxs_count = ((self.samples_count-1) // self.sample_stride + 1)
+        self.last_stride_samples_num = (self.samples_count - 1) % sample_stride  # stride的时候遗留的时间点数量
+                
+        self.batches_num = self.strided_idxs_count // self.batch_size  # batch的数量
+        self.last_batch_samples_num = self.strided_idxs_count % self.batch_size  # 最后一个batch的时间点数量
+        
+        print('last_stride_samples_num: ', self.last_stride_samples_num)
+        print('last_batch_samples_num: ', self.last_batch_samples_num)
+        
+        assert not (shuffle and drop_last), '如果drop_last=True, shuffle必须为False'
+
+    def __iter__(self):
+        if self.drop_last:
+            iter_bidxs = self.idxs.unfold(0, self.batch_size, self.batch_size).tolist()
+        else:
+            if self.shuffle:
+                start_idxs = np.random.choice(self.last_stride_samples_num + 1, 1)[0]  # 随机选取一个开始点
+                # print(self.last_samples_num, start_idxs)
+                tmp_idxs = torch.arange(self.samples_count)[start_idxs::self.sample_stride]
+            else:
+                tmp_idxs = torch.arange(self.samples_count)[::self.sample_stride]
+            iter_bidxs = tmp_idxs.unfold(0, self.batch_size, self.batch_size).tolist()
+            if self.last_batch_samples_num != 0:
+                iter_bidxs.extend([tmp_idxs[-self.last_batch_samples_num:].tolist()])
+        return iter(iter_bidxs)
+        # return iter([iter_bidxs[0].tolist()])
+
+    def __len__(self):
+        return self.batches_num
+
+
 class LorenzDataset(Dataset):
-    def __init__(self, data_dir, coupled_system_n, n_samples, coupled_len, pred_len, lorenz_time, lorenz_step, noise_strength,
-                 skip_time_num, mode='train', split_ratios=[0.8, 0.1, 0.1],
+    def __init__(self, data_dir, coupled_system_n, n_samples, train_coupled_len: int, coupled_len: int, pred_len, lorenz_time, lorenz_step, noise_strength,
+                 skip_time_num, mode='train', split_ratios=[0.8, 0.1, 0.1], select_dims=None, target_dim=None,
                  return_t_idx=False, z_score=False, inverse_out=False, train_sample_fraction=1.0):
         """
 
         :param data_dir: 数据文件夹
-        :param coupled_len:
+        :param train_coupled_len: 训练时的coupled_len， train_coupled_len >= coupled_len
+        :param coupled_len: 预测和验证的时候的coupled_len
         :param pred_len:
         :param train:
         :param z_score: 是否归一化
         :param inverse_out: 输出是否是非归一化数据
         """
         data = self._load_data(data_dir, coupled_system_n, time=lorenz_time, step=lorenz_step,
-                               skip_time_num=skip_time_num, noise_strength=noise_strength)
+                               skip_time_num=skip_time_num, noise_strength=noise_strength)   # [t_len, coupled_system_n*3]
+        
+        # 选择数据维度
+        if select_dims is not None:
+            if type(select_dims) is list:
+                select_dims = np.array(select_dims)
+                data = data[:, select_dims]
+            elif type(select_dims) is int:
+                data = data[:, :select_dims]
+        
+        self.target_dim = target_dim
         self.coupled_len = coupled_len
         self.pred_len = pred_len
         self.data_dim = data.shape[1]
+        self.output_dim = data.shape[1] if target_dim is None else 1
         self.mode = mode
         self.return_t_idxs = return_t_idx
         self.z_score = z_score
@@ -287,6 +356,8 @@ class LorenzDataset(Dataset):
                                            pred_len=pred_len, n_samples=n_samples, skip_rate=1)
 
         samples_num = sample_idxs.shape[0]
+        assert train_coupled_len >= coupled_len, 'train_coupled_len must be greater than coupled_len'
+        cl_er = train_coupled_len - coupled_len  # >= 0
         data_idxs = {'train': sample_idxs[:int(samples_num * split_ratios[0])],
                      'val': sample_idxs[int(samples_num * split_ratios[0]): int(samples_num * (split_ratios[0] + split_ratios[1]))],
                      'test': sample_idxs[int(samples_num * (split_ratios[0] + split_ratios[1])):]}
@@ -298,28 +369,33 @@ class LorenzDataset(Dataset):
             print(train_idxs[:20])
             data_idxs['train'] = train_idxs
 
-        self.select_idxs = data_idxs[self.mode]
-
+        self.select_dims = data_idxs[self.mode]
+        
+        # z-score normalization 
         if not z_score:
             self.data_x = data
-            self.data_y = data
+            self.data_y = data[:, target_dim] if target_dim is not None else data
+            if self.data_y.ndim == 1:
+                self.data_y = self.data_y[:, np.newaxis]
             self.normalizer = None
         else:
             train_data = data[np.min(data_idxs['train']):np.max(data_idxs['train']) + coupled_len]
             self.normalizer = ZScoreNormalizer().fit(train_data)
             self.data_x = self.normalizer.transform(data)
             if self.inverse_out:
-                self.data_y = data
+                self.data_y = data[:, target_dim] if target_dim is not None else data
             else:
-                self.data_y = self.data_x
+                self.data_y = self.data_x[:, target_dim] if target_dim is not None else self.data_x
+            if self.data_y.ndim == 1:
+                self.data_y = self.data_y[:, np.newaxis]
+        
+        if self.mode == 'train':
+            if cl_er != 0:
+                self.select_dims = self.select_dims[:-cl_er]
+            self.coupled_len = train_coupled_len
 
     def _load_data(self, data_dir, coupled_system_n, time, step, skip_time_num=2000, noise_strength=0.0):
         # 生成的时间点足够多，尽量保证不重叠
-        # lorenz_data = data_loader.load_lorenz_data(data_dir, config.INPUT_DIM // 3,
-        #                                            skip_time_num=2000, time_invariant=True, time=5000,
-        #                                            init_way='norm', init_param={'mean': 0, 'std': 3})
-        # lorenz_data = load_lorenz_data(data_dir, coupled_system_n, skip_time_num=2000,
-        #                                time_invariant=True, time=5000, init_way='uniform', init_param=None)
         lorenz_data = load_lorenz_data(data_dir, coupled_system_n, skip_time_num=skip_time_num,
                                        time_invariant=True, time=time, step=step, init_way='uniform', init_param=None)
         if noise_strength != 0:
@@ -330,20 +406,11 @@ class LorenzDataset(Dataset):
         return lorenz_data
 
     def __len__(self):
-        return len(self.select_idxs)
+        return len(self.select_dims)
 
     def __getitem__(self, item):
-        idx = self.select_idxs[item]
+        idx = self.select_dims[item]
         input_data = self.data_x[idx: idx + self.coupled_len]
-        # pred_label = []
-        # for i in range(self.pred_len):
-        #     pred_label.append(self.data_y[idx + i + 1: idx + self.coupled_len + i + 1])
-        # pred_label = np.stack(pred_label, axis=1)
-        ## print(pred_label.shape)
-        # if self.return_t_idxs:
-        #     return input_data, pred_label, idx
-        # else:
-        #     return input_data, pred_label
         rec_label = self.data_y[idx: idx + self.coupled_len]
         pred_label = self.data_y[idx + self.coupled_len: idx + self.coupled_len + self.pred_len]
         if self.return_t_idxs:

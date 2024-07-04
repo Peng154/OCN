@@ -5,6 +5,7 @@ coupled_systems_n: 3
 seed: 456
 gpu_idx: 1
 
+# data params
 data_workers: 3
 b_size: 50
 n_samples: 30000
@@ -14,26 +15,31 @@ skip_time_num: 2000
 noise_strength: 0.0
 
 split_ratios: [0.8, 0.1, 0.1] 
+train_coupled_len: 20 
+train_sample_stride: 1  
 coupled_len: 20 
-pred_len: 8
+pred_len: 8  
+extra_forward: False 
+use_mean_embedds: True  
 
-z_score: True 
-inverse_out: False
+z_score: True  
+inverse_out: False  
 
 epoches: 90
 early_stop_patience: 70
 eval_interval: 1
 
-
 evaluate: False
-resume_file: ~  # 需要加载的保存点
+resume_file: ~
+
 
 model_name: 'PredTCNRecurrentDEAE_H_Vector_Embed_Mean'
 model_params:
-  init_method: 'kaiming_normal_'
+  init_method: 'kaiming_normal_' 
   norm_type: 'ln'
   dropout: 0.05
-  activation: 'ReLU'
+  activation: 'GELU'
+  use_revin: False
 
   encoder_param:
 
@@ -41,26 +47,37 @@ model_params:
       hidden_size: [ 460 ]
 
   one_neuron_param:
+    # only one neuron
     resnet: False
-    kernel_size: 201
-    channels: [30, 1]
-    dilations: [1, 1]
-    strides: [1, 1]
+    kernel_size: 401
+    channels: [1]  
+    dilations: [1] 
+    strides: [1]
     recurrent_times: 480
-    embedding_rec_times: 16  
+    ln_ele_affine: True
+    embedding_rec_times: 480 
+    last_acti: True
+    last_dropout: False
+    last_norm: True
+    acti: 'GELU'
 
   decoder_param:
     -
-      module_type: 'identity'
-      hidden_size: [ 240 ]
+      module_type: 'Flatten'
+      module_params:
+        start_dim: -2
+        end_dim: -1
 
 lr: 5.0e-3
-lr_scheduler: 'ExponentialLR'
-lr_scheduler_params:
-  last_epoch: -1
-  gamma: 0.95
 
-l2_weight: 1.0e-2 
+lr_scheduler: 
+  sched_type: 'OneCycleLR'
+  lr_scheduler_params:
+    pct_start: 0.3
+    div_factor: 25.0
+    final_div_factor: 100.0
+
+l2_weight: 0.0  # l2 正则化
 
 loss_weights:
   pred_loss: 2.0
