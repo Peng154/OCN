@@ -15,19 +15,10 @@ import numpy as np
 
 
 def get_lorenz_matrix(n, time=100, step=0.02, c=0.1, time_invariant=True, init_way='uniform', init_param=None):
-    """
-
-    :param n:
-    :param time:
-    :param step:
-    :param c:
-    :param time_invariant: 是否是时不变的
-    :return: 返回一个[time // step, n*3]大小的矩阵，n*3是变量数目， time // step 是时间长度。
-    """
     length = int(time / step)  #
-    x = np.zeros((n * 3, length), dtype=np.float32)  # 初始化矩阵
+    x = np.zeros((n * 3, length), dtype=np.float32)  
     if init_way == 'uniform':
-        x[:, 0] = np.random.rand(n * 3)  # 随机生成初始值
+        x[:, 0] = np.random.rand(n * 3) 
     elif init_way == 'norm':
         x[:, 0] = np.random.randn(n * 3) * init_param['std'] + init_param['mean']
     sigma = 10.0
@@ -54,20 +45,7 @@ def get_lorenz_matrix(n, time=100, step=0.02, c=0.1, time_invariant=True, init_w
 
 def load_lorenz_data(data_dir, n, skip_time_num, time=100, step=0.02, c=0.1, time_invariant=True,
                      init_way='uniform', init_param=None):
-    """
 
-    :param data_dir:
-    :param n:
-    :param skip_time_num:
-    :param time:
-    :param step:
-    :param c:
-    :param time_invariant:
-    :param init_way: uniform 或者 norm
-    :param init_param: norm 传入 均值和方差 字典
-    :return:
-    """
-    # 数据文件名称
     data_file_name = 'lorenz_({})_n={}_time={}_step={}_c={}_init_way={}_init_param={}.pkl'.format(
         'time_invariant' if time_invariant else 'time-variant',
         n, time, step, c, init_way, init_param)
@@ -78,12 +56,10 @@ def load_lorenz_data(data_dir, n, skip_time_num, time=100, step=0.02, c=0.1, tim
     file_path = os.path.join(data_dir, data_file_name)
 
     if os.path.exists(file_path):
-        # 数据文件存在直接加载
         print('load data from {}'.format(file_path))
         with open(file_path, 'rb') as file:
             data = pickle.load(file)
     else:
-        # 数据文件不存在，创建后保存
         data = get_lorenz_matrix(n, time, step, c, time_invariant, init_way, init_param)
         with open(file_path, 'wb') as file:
             pickle.dump(data, file)
@@ -92,15 +68,6 @@ def load_lorenz_data(data_dir, n, skip_time_num, time=100, step=0.02, c=0.1, tim
 
 
 def get_time_sample_idxs(total_time_len, coupled_len, pred_len, n_samples=None, skip_rate=1):
-    """
-
-    :param total_time_len:
-    :param coupled_len:
-    :param pred_len:
-    :param n_samples:
-    :param skip_rate: 样本之间跳跃的时间点
-    :return:
-    """
     all_idxs = np.arange(0, total_time_len - (coupled_len+pred_len), skip_rate)
     if n_samples:
         return all_idxs[:n_samples]
@@ -109,14 +76,7 @@ def get_time_sample_idxs(total_time_len, coupled_len, pred_len, n_samples=None, 
 
 
 def get_noOverlap_select_idxs(total_time_len, train_len, embedding_len, n_samples=None):
-    """
-    获取不重叠的数据索引，索引为开始预测的时间点
-    :param total_time_len:
-    :param train_len:
-    :param embedding_len:
-    :param n_samples:
-    :return:
-    """
+
     max_nb_samples = (total_time_len - embedding_len - 1) // train_len
     assert 0 < n_samples < max_nb_samples, 'nb_samples is too large!'
     if n_samples is not None:
@@ -269,28 +229,18 @@ def get_dataset(cfgs):
 class TimeBatchSampler(Sampler[List[int]]):
     def __init__(self, data_source, batch_size: int, sample_stride: int,
                  shuffle=True, drop_last=False):
-        """_summary_
 
-        Args:
-            data_source (_type_): 可以直接传dataset
-            batch_size (_type_): batch 大小
-            batch_stride (_type_): batch 之间的间隔
-            shuffle (bool, optional): shuffle 的进行就是:
-                如果 (len(data_source) - batch_size) % batch_stride != 0
-                k是最后剩下来的几个时间点的数量
-                那么每次初始化batch_idxs迭代器都是 随机从data_source的前k个索引开始
-        """
-        self.samples_count = len(data_source)  # 所有数据样本的数量
+        self.samples_count = len(data_source)  
         self.sample_stride = sample_stride
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.drop_last = drop_last
         
         self.strided_idxs_count = ((self.samples_count-1) // self.sample_stride + 1)
-        self.last_stride_samples_num = (self.samples_count - 1) % sample_stride  # stride的时候遗留的时间点数量
+        self.last_stride_samples_num = (self.samples_count - 1) % sample_stride  
                 
-        self.batches_num = self.strided_idxs_count // self.batch_size  # batch的数量
-        self.last_batch_samples_num = self.strided_idxs_count % self.batch_size  # 最后一个batch的时间点数量
+        self.batches_num = self.strided_idxs_count // self.batch_size 
+        self.last_batch_samples_num = self.strided_idxs_count % self.batch_size  
         
         print('last_stride_samples_num: ', self.last_stride_samples_num)
         print('last_batch_samples_num: ', self.last_batch_samples_num)
@@ -302,7 +252,7 @@ class TimeBatchSampler(Sampler[List[int]]):
             iter_bidxs = self.idxs.unfold(0, self.batch_size, self.batch_size).tolist()
         else:
             if self.shuffle:
-                start_idxs = np.random.choice(self.last_stride_samples_num + 1, 1)[0]  # 随机选取一个开始点
+                start_idxs = np.random.choice(self.last_stride_samples_num + 1, 1)[0] 
                 # print(self.last_samples_num, start_idxs)
                 tmp_idxs = torch.arange(self.samples_count)[start_idxs::self.sample_stride]
             else:
@@ -311,7 +261,6 @@ class TimeBatchSampler(Sampler[List[int]]):
             if self.last_batch_samples_num != 0:
                 iter_bidxs.extend([tmp_idxs[-self.last_batch_samples_num:].tolist()])
         return iter(iter_bidxs)
-        # return iter([iter_bidxs[0].tolist()])
 
     def __len__(self):
         return self.batches_num
@@ -321,20 +270,10 @@ class LorenzDataset(Dataset):
     def __init__(self, data_dir, coupled_system_n, n_samples, train_coupled_len: int, coupled_len: int, pred_len, lorenz_time, lorenz_step, noise_strength,
                  skip_time_num, mode='train', split_ratios=[0.8, 0.1, 0.1], select_dims=None, target_dim=None,
                  return_t_idx=False, z_score=False, inverse_out=False, train_sample_fraction=1.0):
-        """
 
-        :param data_dir: 数据文件夹
-        :param train_coupled_len: 训练时的coupled_len， train_coupled_len >= coupled_len
-        :param coupled_len: 预测和验证的时候的coupled_len
-        :param pred_len:
-        :param train:
-        :param z_score: 是否归一化
-        :param inverse_out: 输出是否是非归一化数据
-        """
         data = self._load_data(data_dir, coupled_system_n, time=lorenz_time, step=lorenz_step,
                                skip_time_num=skip_time_num, noise_strength=noise_strength)   # [t_len, coupled_system_n*3]
         
-        # 选择数据维度
         if select_dims is not None:
             if type(select_dims) is list:
                 select_dims = np.array(select_dims)
@@ -395,12 +334,12 @@ class LorenzDataset(Dataset):
             self.coupled_len = train_coupled_len
 
     def _load_data(self, data_dir, coupled_system_n, time, step, skip_time_num=2000, noise_strength=0.0):
-        # 生成的时间点足够多，尽量保证不重叠
+
         lorenz_data = load_lorenz_data(data_dir, coupled_system_n, skip_time_num=skip_time_num,
                                        time_invariant=True, time=time, step=step, init_way='uniform', init_param=None)
         if noise_strength != 0:
             print('add noise to data, noise strength: ', noise_strength)
-            np.random.seed(666)  # 保证每次生成的噪声一样
+            np.random.seed(666)  
             lorenz_data += np.random.normal(0, noise_strength, lorenz_data.shape)
         print('lorenz_data shape: ', lorenz_data.shape)
         return lorenz_data
@@ -417,259 +356,6 @@ class LorenzDataset(Dataset):
             return input_data, rec_label, pred_label, idx
         else:
             return input_data, rec_label, pred_label
-
-
-class Dataset_ETT_hour(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, inverse=False, return_t_idx=False):
-        # size [seq_len, label_len, pred_len]
-        # info
-        if size == None:
-            self.seq_len = 24 * 4 * 4
-            self.pred_len = 24 * 4
-        else:
-            self.seq_len = size[0]
-            self.pred_len = size[1]
-        # init
-        assert flag in ['train', 'test', 'val']
-        type_map = {'train': 0, 'val': 1, 'test': 2}
-        self.set_type = type_map[flag]
-
-        self.features = features
-        self.target = target
-        self.scale = scale
-        self.inverse = inverse
-
-        self.root_path = root_path
-        self.data_path = data_path
-        self.return_t_idx = return_t_idx
-        self.__read_data__()
-        self.data_dim = self.data_x.shape[1]
-
-    def __read_data__(self):
-        self.normalizer = ZScoreNormalizer()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
-
-        border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
-        border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-
-        if self.features == 'M' or self.features == 'MS':  # 第一列是时间索引，所以不需要
-            cols_data = df_raw.columns[1:]
-            df_data = df_raw[cols_data]
-        elif self.features == 'S':
-            df_data = df_raw[[self.target]]
-        df_data = df_data.astype(np.float32)
-        if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]  # only train data
-            self.normalizer.fit(train_data.values)
-            data = self.normalizer.transform(df_data.values)
-        else:
-            data = df_data.values
-
-        # df_stamp = df_raw[['date']][border1:border2]
-        # df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        # data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
-
-        self.data_x = data[border1:border2]
-        if self.inverse:
-            self.data_y = df_data.values[border1:border2]  # 标签不按照z-score normalization
-        else:
-            self.data_y = data[border1:border2]
-        # self.data_stamp = data_stamp
-
-    def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end
-        r_end = r_begin + self.pred_len
-
-        input_x = self.data_x[s_begin:s_end]
-
-        rec_label = self.data_y[s_begin: s_end]
-        pred_label = self.data_y[r_begin: r_end]
-        if self.return_t_idx:
-            return input_x, rec_label, pred_label, index
-        else:
-            return input_x, rec_label, pred_label
-
-    def __len__(self):
-        return len(self.data_x) - self.seq_len - self.pred_len + 1
-
-    def inverse_transform(self, data):
-        return self.normalizer.inverse_transform(data)
-
-
-class Dataset_ETT_minute(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, inverse=False, return_t_idx=False):
-        # size [seq_len, label_len, pred_len]
-        # info
-        if size == None:
-            self.seq_len = 24 * 4 * 4
-            self.pred_len = 24 * 4
-        else:
-            self.seq_len = size[0]
-            self.pred_len = size[1]
-        # init
-        assert flag in ['train', 'test', 'val']
-        type_map = {'train': 0, 'val': 1, 'test': 2}
-        self.set_type = type_map[flag]
-
-        self.features = features
-        self.target = target
-        self.scale = scale
-        self.inverse = inverse
-
-        self.root_path = root_path
-        self.data_path = data_path
-        self.return_t_idx = return_t_idx
-        self.__read_data__()
-        self.data_dim = self.data_x.shape[1]
-
-    def __read_data__(self):
-        self.normalizer = ZScoreNormalizer()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
-
-        border1s = [0, 12 * 30 * 24 * 4 - self.seq_len, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - self.seq_len]
-        border2s = [12 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4, 12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-
-        if self.features == 'M' or self.features == 'MS':  # 第一列是时间索引，所以不需要
-            cols_data = df_raw.columns[1:]
-            df_data = df_raw[cols_data]
-        elif self.features == 'S':
-            df_data = df_raw[[self.target]]
-        df_data = df_data.astype(np.float32)
-        if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]  # only train data
-            self.normalizer.fit(train_data.values)
-            data = self.normalizer.transform(df_data.values)
-        else:
-            data = df_data.values
-
-        # df_stamp = df_raw[['date']][border1:border2]
-        # df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        # data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
-
-        self.data_x = data[border1:border2]
-        if self.inverse:
-            self.data_y = df_data.values[border1:border2]  # 标签不按照z-score normalization
-        else:
-            self.data_y = data[border1:border2]
-        # self.data_stamp = data_stamp
-
-    def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end
-        r_end = r_begin + self.pred_len
-
-        input_x = self.data_x[s_begin:s_end]
-
-        rec_label = self.data_y[s_begin: s_end]
-        pred_label = self.data_y[r_begin: r_end]
-        if self.return_t_idx:
-            return input_x, rec_label, pred_label, index
-        else:
-            return input_x, rec_label, pred_label
-
-    def __len__(self):
-        return len(self.data_x) - self.seq_len - self.pred_len + 1
-
-    def inverse_transform(self, data):
-        return self.normalizer.inverse_transform(data)
-
-
-class Dataset_Weather_hour(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
-                 features='S', data_path='WTH.csv',
-                 target='OT', scale=True, inverse=False, return_t_idx=False):
-        # size [seq_len, label_len, pred_len]
-        # info
-        if size == None:
-            self.seq_len = 24 * 4 * 4
-            self.pred_len = 24 * 4
-        else:
-            self.seq_len = size[0]
-            self.pred_len = size[1]
-        # init
-        assert flag in ['train', 'test', 'val']
-        type_map = {'train': 0, 'val': 1, 'test': 2}
-        self.set_type = type_map[flag]
-
-        self.features = features
-        self.target = target
-        self.scale = scale
-        self.inverse = inverse
-
-        self.root_path = root_path
-        self.data_path = data_path
-        self.return_t_idx = return_t_idx
-        self.__read_data__()
-        self.data_dim = self.data_x.shape[1]
-
-    def __read_data__(self):
-        self.normalizer = ZScoreNormalizer()
-        df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
-
-        border1s = [0, 28 * 30 * 24 - self.seq_len, 28 * 30 * 24 + 10 * 30 * 24 - self.seq_len]
-        border2s = [28 * 30 * 24, 28 * 30 * 24 + 10 * 30 * 24, 28 * 30 * 24 + 20 * 30 * 24]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-
-        if self.features == 'M' or self.features == 'MS':  # 第一列是时间索引，所以不需要
-            cols_data = df_raw.columns[1:]
-            df_data = df_raw[cols_data]
-        elif self.features == 'S':
-            df_data = df_raw[[self.target]]
-        df_data = df_data.astype(np.float32)
-        if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]  # only train data
-            self.normalizer.fit(train_data.values)
-            data = self.normalizer.transform(df_data.values)
-        else:
-            data = df_data.values
-
-        # df_stamp = df_raw[['date']][border1:border2]
-        # df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        # data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
-
-        self.data_x = data[border1:border2]
-        if self.inverse:
-            self.data_y = df_data.values[border1:border2]  # 标签不按照z-score normalization
-        else:
-            self.data_y = data[border1:border2]
-        # self.data_stamp = data_stamp
-
-    def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end
-        r_end = r_begin + self.pred_len
-
-        input_x = self.data_x[s_begin:s_end]
-
-        rec_label = self.data_y[s_begin: s_end]
-        pred_label = self.data_y[r_begin: r_end]
-        if self.return_t_idx:
-            return input_x, rec_label, pred_label, index
-        else:
-            return input_x, rec_label, pred_label
-
-    def __len__(self):
-        return len(self.data_x) - self.seq_len - self.pred_len + 1
-
-    def inverse_transform(self, data):
-        return self.normalizer.inverse_transform(data)
-
 
 class Dataset_Time_Seires(Dataset):
     def __init__(self, root_path, flag='train', size=None,
@@ -713,7 +399,7 @@ class Dataset_Time_Seires(Dataset):
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
-        if self.features == 'M' or self.features == 'MS':  # 第一列是时间索引，所以不需要
+        if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]
             df_data = df_raw[cols_data]
         elif self.features == 'S':
@@ -727,13 +413,10 @@ class Dataset_Time_Seires(Dataset):
         else:
             data = df_data.values
 
-        # df_stamp = df_raw[['date']][border1:border2]
-        # df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        # data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
 
         self.data_x = data[border1:border2]
         if self.inverse:
-            self.data_y = df_data.values[border1:border2]  # 标签不按照z-score normalization
+            self.data_y = df_data.values[border1:border2] 
         else:
             self.data_y = data[border1:border2]
         # self.data_stamp = data_stamp
@@ -747,22 +430,13 @@ class Dataset_Time_Seires(Dataset):
         input_x = self.data_x[s_begin:s_end]
 
         rec_label = self.data_y[s_begin: s_end]
-        # if input_x.shape[0] != 48 or rec_label.shape[0] != 48:
-        #     print(self.data_x.shape, s_begin, s_end, input_x.shape, rec_label.shape)
-        #
-        #     exit(0)
+
         pred_label = self.data_y[r_begin: r_end]
 
         if self.return_t_idx:
             return input_x, rec_label, pred_label, index
         else:
             return input_x, rec_label, pred_label
-        #
-        # full_label = self.data_y[s_begin: r_end][self.full_label_select_idxs]
-        # if self.return_t_idx:
-        #     return input_x, full_label, rec_label, pred_label, index
-        # else:
-        #     return input_x, full_label, rec_label, pred_label
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -820,12 +494,7 @@ class ZScoreNormalizer(object):
 # Custom data augmentation classes
 class GuassionNoise(object):
     def __init__(self, mode=None, mean=0, std=1e-2, clip_range=False, p=1.0):
-        """
 
-        :param mode: 'RGB' / 'L'
-        :param mean: 加入噪声的均值和方差
-        :param std: 方差最好非常小
-        """
         self.mode = mode
         self.mean = mean
         self.std = std
@@ -853,12 +522,7 @@ class GuassionNoise(object):
 
 class GuassionNoiseGPU(torch.nn.Module):
     def __init__(self, mode=None, mean=0, std=1e-2, clip_range=False, p=1.0):
-        """
 
-        :param mode: 'RGB' / 'L'
-        :param mean: 加入噪声的均值和方差
-        :param std: 方差最好非常小
-        """
         super(GuassionNoiseGPU, self).__init__()
         self.mode = mode
         self.mean = mean
@@ -884,25 +548,10 @@ class GuassionNoiseGPU(torch.nn.Module):
             out_img = out_img
         return out_img
 
-        # if tmp_p <= self.p:
-        #     noise_m = torch.randn(*input_img.shape[-2:]) * self.std + self.mean
-        #     if self.clip_range:
-        #         out_img = torch.clip(input_img + noise_m, min=self.clip_range[0], max=self.clip_range[1])
-        #     else:
-        #         out_img = input_img + noise_m
-        # else:
-        #     out_img = input_img
-        # return out_img
-
 custom_aug = {'GuassionNoise': GuassionNoise, 'GuassionNoiseGPU': GuassionNoiseGPU}
 
 
 def get_model_N_L(cfgs):
-    """
-    获取模型迭代过程中的每层时间步长N 和 层数L
-    :param cfgs:
-    :return:
-    """
     hidden_size = cfgs['model_params']['hidden_size']
     if type(hidden_size) is not list:
         hidden_size = [hidden_size]
@@ -927,15 +576,6 @@ def get_aug_list(cfgs):
 
 
 def process_weather_data(wth_dir):
-    # wth_file1 = 'mpi_roof_2022a.csv'
-    # wth_file2 = 'mpi_roof_2022b.csv'
-    #
-    # wth_data1 = pd.read_csv(os.path.join(wth_dir, wth_file1), encoding = "ISO-8859-1")
-    # wth_data2 = pd.read_csv(os.path.join(wth_dir, wth_file2), encoding = "ISO-8859-1")
-    #
-    # wth_data = pd.concat([wth_data1, wth_data2], axis=0, ignore_index=True)
-    # wth_data.to_csv(os.path.join(wth_dir, 'mpi_roof_2022.csv'), index=False)
-
     wth_file = 'mpi_roof_2022.csv'
     wth_data = pd.read_csv(os.path.join(wth_dir, wth_file))
     print(wth_data.shape)
