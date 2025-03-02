@@ -1,6 +1,8 @@
 data_dir: '../data/Lorenz'
 data_name: 'Lorenz'
 coupled_systems_n: 3
+target_dim: ~  # If it is an integer, it represents the first "target_dim" variables as the model's output
+select_dims: ~  # If it is an integer, it represents the first "select_dims" variables as the model's input
 
 seed: 456
 gpu_idx: 1
