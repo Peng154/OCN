@@ -15,6 +15,33 @@ def get_time_log_dir(*args, **kwargs):
     log_dir_name = f'({time_stamp.strftime("%Y_%m_%d-%H_%M_%S")}) {arg_str} {karg_str}'
     return log_dir_name
 
+
+def add_model_postfix(model_name, model_params):
+    model_postfix = ''
+    ocn_type = None if len(model_params['one_neuron_param']['channels']) == 1 else 'mlocn'
+    
+    is_sub_time = 'subtime' if model_params['one_neuron_param']['recurrent_times'] != model_params['one_neuron_param']['embedding_rec_times'] else 'nosubtime'
+    
+    decoder_type = None
+    is_patch = False
+    for dp in model_params['decoder_param']:
+        if dp['module_type'] == 'transformer_encoder':
+            is_patch = True
+            break
+    if is_patch:
+        decoder_type = 'patch'
+    elif model_params['decoder_param'][-1]['module_type'] == 'mlp':
+        decoder_type = 'mlp'
+        
+    postfixs = [ocn_type, is_sub_time, decoder_type]
+    postfixs = [p for p in postfixs if p is not None]
+    
+    model_postfix = '_'.join(postfixs)
+    
+    model_postfix = f'({model_postfix})'
+    return model_name + ' ' + model_postfix
+
+
 def get_log_dir_from_file(file_path):
     dir_path = '/'.join(file_path.split('/')[:-1])
     return dir_path
